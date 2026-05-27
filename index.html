@@ -96,6 +96,12 @@ select option { background: #1a1a2e; }
         <option value="Other">Other</option>
       </select>
     </div>
+    <div class="field">
+      <label>Вакансия <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(опционально)</span></label>
+      <select id="jobOpening">
+        <option value="">— загружаем... —</option>
+      </select>
+    </div>
     <button class="btn" id="uploadBtn" disabled>
       <span id="btnText">↑ Отправить в Zoho</span>
     </button>
@@ -119,6 +125,7 @@ if (entered !== PASSWORD) {
 }
 
 const WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/aa8a0dc8-0e24-4cae-96b2-2da455ad84d6';
+const JOBS_WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/get-jobs';  
 
 const MONTH_NAMES = ['','1. January','2. February','3. March','4. April','5. May','6. June','7. July','8. August','9. September','10. October','11. November','12. December'];
 
@@ -141,6 +148,24 @@ const status = document.getElementById('status');
 const recruiter = document.getElementById('recruiter');
 const source = document.getElementById('source');
 let selectedFile = null;
+async function loadJobOpenings() {
+  const sel = document.getElementById('jobOpening');
+  try {
+    const r = await fetch(JOBS_WEBHOOK_URL);
+    const data = await r.json();
+    const jobs = Array.isArray(data) ? data : (data.data || []);
+    sel.innerHTML = '<option value="">— без привязки —</option>';
+    jobs.filter(j => j.Job_Opening_Status === 'In-progress').forEach(j => {
+      const o = document.createElement('option');
+      o.value = j.id;
+      o.textContent = j.Job_Opening_Name;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    sel.innerHTML = '<option value="">— не удалось загрузить —</option>';
+  }
+}
+loadJobOpenings();  
 
 function setFile(file) {
   if (!file || !file.name.endsWith('.csv')) {
@@ -222,6 +247,7 @@ uploadBtn.addEventListener('click', async () => {
       file_name: selectedFile.name,
       lead_assigning_date: lead_assigning_date,
       lead_month: lead_month,
+      job_opening_id: document.getElementById('jobOpening').value || null,
       candidates: candidates
     };
 
