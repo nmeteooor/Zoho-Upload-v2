@@ -153,7 +153,8 @@ async function loadJobOpenings() {
   try {
     const r = await fetch(JOBS_WEBHOOK_URL);
     const data = await r.json();
-    const jobs = Array.isArray(data) ? data : (data.data || []);
+    const raw = Array.isArray(data) ? data[0] : data;
+const jobs = raw.data || raw.jobs || (Array.isArray(data) ? data : []);
     sel.innerHTML = '<option value="">— без привязки —</option>';
     jobs.filter(j => j.Job_Opening_Status === 'In-progress').forEach(j => {
       const o = document.createElement('option');
