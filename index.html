@@ -51,6 +51,10 @@ select option { background: #1a1a2e; }
 .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
 .hint { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; line-height: 1.6; margin-top: 0.75rem; padding: 10px 12px; background: rgba(129,140,248,0.04); border-radius: 8px; border: 1px solid rgba(129,140,248,0.12); }
+.steps { margin-top: 0.75rem; counter-reset: step; }
+.step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; line-height: 1.5; }
+.step-num { width: 20px; height: 20px; border-radius: 50%; background: rgba(129,140,248,0.15); border: 1px solid rgba(129,140,248,0.3); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--accent2); flex-shrink: 0; font-weight: 700; }
+.step-active .step-num { background: rgba(110,231,183,0.15); border-color: rgba(110,231,183,0.3); color: var(--accent); }
 .status { margin-top: 1rem; padding: 12px 14px; border-radius: 8px; font-size: 13px; display: none; align-items: center; gap: 8px; }
 .status.show { display: flex; }
 .status.loading { background: rgba(129,140,248,0.08); border: 1px solid rgba(129,140,248,0.2); color: var(--accent2); }
@@ -73,6 +77,9 @@ select option { background: #1a1a2e; }
     <p class="subtitle">Скачай CSV из Metaview и загрузи сюда. Агент автоматически создаст кандидатов в Zoho Recruit.</p>
   </div>
   <div class="card">
+
+    <!-- STEP 1: Загрузка CSV от Metaview -->
+    <div class="section-label">Шаг 1 — CSV от Metaview</div>
     <div class="drop-zone" id="dropZone">
       <input type="file" id="fileInput" accept=".csv">
       <div class="drop-icon">📄</div>
@@ -84,6 +91,69 @@ select option { background: #1a1a2e; }
       <span class="file-name" id="fileName"></span>
       <span class="file-remove" id="fileRemove">✕</span>
     </div>
+
+    <button class="btn btn-secondary" id="downloadLinkedInBtn" disabled>
+      ↓ Скачать LinkedIn URLs для Snov
+    </button>
+
+    <hr class="divider">
+
+    <!-- STEP 2: Загрузка CSV от Snov -->
+    <div class="section-label">Шаг 2 — CSV от Snov <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px"></span></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>Нажми кнопку выше → скачается CSV с LinkedIn URLs</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>Зайди в <b style="color:var(--accent2)">Snov.io → Finder → LinkedIn Search → Import from file</b> → загрузи файл</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>Дождись обработки → экспортируй результат с полями Email + LinkedIn</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>Загрузи экспорт от Snov ниже</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <div class="drop-zone" id="snovDropZone" style="padding: 1.5rem; margin-bottom: 0;">
+        <input type="file" id="snovFileInput" accept=".csv">
+        <div class="drop-icon" style="width:36px;height:36px;font-size:16px;margin-bottom:0.5rem;">📧</div>
+        <div class="drop-title" style="font-size:13px;">Загрузи CSV от Snov</div>
+        <div class="drop-sub">Email, First name, Last name, LinkedIn</div>
+      </div>
+      <div class="file-selected" id="snovFileSelected" style="margin-top:0.75rem;margin-bottom:0;">
+        <span class="file-icon">✅</span>
+        <span class="file-name" id="snovFileName"></span>
+        <span class="file-remove" id="snovFileRemove">✕</span>
+      </div>
+    </div>
+
+    <button class="btn btn-outline" id="mergeBtn" disabled>
+      ↓ Скачать обогащённый CSV
+    </button>
+
+    <hr class="divider">
+
+    <!-- STEP 3: Отправка в Zoho -->
+    <div class="section-label">Шаг 3 — Отправить в Zoho</div>
+    <div class="drop-zone" id="finalDropZone" style="padding: 1.5rem; margin-bottom: 0.75rem;">
+      <input type="file" id="finalFileInput" accept=".csv">
+      <div class="drop-icon" style="width:36px;height:36px;font-size:16px;margin-bottom:0.5rem;">🗃️</div>
+      <div class="drop-title" style="font-size:13px;">Загрузи обогащённый CSV</div>
+      <div class="drop-sub">тот что скачали на шаге 2</div>
+    </div>
+    <div class="file-selected" id="finalFileSelected" style="margin-bottom:0.75rem;">
+      <span class="file-icon">✅</span>
+      <span class="file-name" id="finalFileName"></span>
+      <span class="file-remove" id="finalFileRemove">✕</span>
+    </div>
+
     <div class="field">
       <label>Кто загружает</label>
       <select id="recruiter">
@@ -109,58 +179,27 @@ select option { background: #1a1a2e; }
         <option value="">— загружаем... —</option>
       </select>
     </div>
+
     <button class="btn" id="uploadBtn" disabled>
       <span id="btnText">↑ Отправить в Zoho</span>
-    </button>
-
-    <hr class="divider">
-
-    <div class="section-label">📧 Обогащение emails через Snov.io</div>
-
-    <button class="btn btn-secondary" id="downloadLinkedInBtn" disabled>
-      ↓ Скачать LinkedIn URLs для Snov
-    </button>
-    <div class="hint">
-      <b style="color:var(--accent2)">Как получить emails:</b><br>
-      1. Нажми кнопку выше → скачается CSV с LinkedIn URLs<br>
-      2. Зайди в <b style="color:var(--accent2)">Snov.io → Finder → LinkedIn Search → Import from file</b><br>
-      3. Загрузи скачанный файл → дождись обработки → экспортируй результат<br>
-      4. Загрузи экспорт от Snov ниже
-    </div>
-
-    <div style="margin-top: 1rem;">
-      <div class="drop-zone" id="snovDropZone" style="padding: 1.5rem; margin-bottom: 0;">
-        <input type="file" id="snovFileInput" accept=".csv">
-        <div class="drop-icon" style="width:36px;height:36px;font-size:16px;margin-bottom:0.5rem;">📧</div>
-        <div class="drop-title" style="font-size:13px;">Загрузи CSV от Snov</div>
-        <div class="drop-sub">с полями: Email, First name, Last name, LinkedIn</div>
-      </div>
-      <div class="file-selected" id="snovFileSelected" style="margin-top:0.75rem;margin-bottom:0;">
-        <span class="file-icon">✅</span>
-        <span class="file-name" id="snovFileName"></span>
-        <span class="file-remove" id="snovFileRemove">✕</span>
-      </div>
-    </div>
-
-    <button class="btn btn-outline" id="updateEmailsBtn" disabled>
-      ↑ Обновить emails в Zoho
     </button>
 
     <div class="status" id="status"></div>
   </div>
   <div class="flow">
-    <div class="flow-step"><span>📥</span>CSV от Metaview</div>
+    <div class="flow-step"><span>📥</span>Metaview CSV</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span>📧</span>Snov emails</div>
     <div class="flow-arrow">→</div>
     <div class="flow-step"><span>⚡</span>n8n агент</div>
     <div class="flow-arrow">→</div>
-    <div class="flow-step"><span>🗃️</span>Zoho Recruit</div>
+    <div class="flow-step"><span>🗃️</span>Zoho</div>
   </div>
 </div>
 
 <script>
 const WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/aa8a0dc8-0e24-4cae-96b2-2da455ad84d6';
 const JOBS_WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/get-jobs';
-const UPDATE_EMAILS_WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/update-emails';
 
 const MONTH_NAMES = ['','1. January','2. February','3. March','4. April','5. May','6. June','7. July','8. August','9. September','10. October','11. November','12. December'];
 
@@ -171,29 +210,38 @@ function formatLeadMonth(dateStr) {
   return MONTH_NAMES[monthNum] + ' ' + year;
 }
 
+// Elements
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const fileSelected = document.getElementById('fileSelected');
 const fileName = document.getElementById('fileName');
 const fileRemove = document.getElementById('fileRemove');
-const uploadBtn = document.getElementById('uploadBtn');
 const downloadLinkedInBtn = document.getElementById('downloadLinkedInBtn');
-const btnText = document.getElementById('btnText');
-const status = document.getElementById('status');
-const recruiter = document.getElementById('recruiter');
-const source = document.getElementById('source');
 
 const snovDropZone = document.getElementById('snovDropZone');
 const snovFileInput = document.getElementById('snovFileInput');
 const snovFileSelected = document.getElementById('snovFileSelected');
 const snovFileName = document.getElementById('snovFileName');
 const snovFileRemove = document.getElementById('snovFileRemove');
-const updateEmailsBtn = document.getElementById('updateEmailsBtn');
+const mergeBtn = document.getElementById('mergeBtn');
 
-let selectedFile = null;
-let parsedCandidates = [];
-let selectedSnovFile = null;
+const finalDropZone = document.getElementById('finalDropZone');
+const finalFileInput = document.getElementById('finalFileInput');
+const finalFileSelected = document.getElementById('finalFileSelected');
+const finalFileName = document.getElementById('finalFileName');
+const finalFileRemove = document.getElementById('finalFileRemove');
+const uploadBtn = document.getElementById('uploadBtn');
+const btnText = document.getElementById('btnText');
+const status = document.getElementById('status');
+const recruiter = document.getElementById('recruiter');
+const source = document.getElementById('source');
 
+let metaviewFile = null;
+let metaviewCandidates = [];
+let snovFile = null;
+let finalFile = null;
+
+// Load job openings
 async function loadJobOpenings() {
   const sel = document.getElementById('jobOpening');
   try {
@@ -214,10 +262,11 @@ async function loadJobOpenings() {
 }
 loadJobOpenings();
 
+// CSV parser
 function parseCSV(text) {
   const lines = text.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-  const candidates = [];
+  const rows = [];
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
     const values = [];
@@ -228,71 +277,78 @@ function parseCSV(text) {
       else { current += ch; }
     }
     values.push(current.trim());
-    const firstName = values[0] || '';
-    const lastName = values[1] || '';
-    const jobTitle = values[4] || '';
-    if (!firstName.trim() && !lastName.trim() && !jobTitle.trim()) continue;
-    const candidate = {};
-    headers.forEach((h, idx) => { candidate[h] = values[idx] || ''; });
-    candidates.push(candidate);
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+    rows.push(row);
   }
-  return candidates;
+  return { headers, rows };
 }
 
-function setFile(file) {
-  if (!file || !file.name.endsWith('.csv')) {
-    showStatus('error', '⚠️ Пожалуйста, выбери файл формата .csv');
-    return;
-  }
-  selectedFile = file;
+function normalizeLinkedIn(url) {
+  if (!url) return '';
+  return url.trim().toLowerCase().replace(/\/$/, '');
+}
+
+// Step 1: Metaview CSV
+function setMetaviewFile(file) {
+  if (!file || !file.name.endsWith('.csv')) { showStatus('error', '⚠️ Выбери .csv файл от Metaview'); return; }
+  metaviewFile = file;
   fileName.textContent = file.name;
   dropZone.style.display = 'none';
   fileSelected.classList.add('show');
   file.text().then(text => {
-    parsedCandidates = parseCSV(text);
-    downloadLinkedInBtn.disabled = parsedCandidates.length === 0;
+    const { rows } = parseCSV(text);
+    metaviewCandidates = rows.filter(r => r['First Name'] || r['Last Name'] || r['Job Title']);
+    downloadLinkedInBtn.disabled = metaviewCandidates.length === 0;
+    checkMergeReady();
   });
-  checkReady();
 }
 
-function clearFile() {
-  selectedFile = null;
-  parsedCandidates = [];
+function clearMetaviewFile() {
+  metaviewFile = null; metaviewCandidates = [];
   fileInput.value = '';
   dropZone.style.display = '';
   fileSelected.classList.remove('show');
   downloadLinkedInBtn.disabled = true;
-  checkReady();
+  checkMergeReady();
   status.classList.remove('show');
 }
 
-function checkReady() { uploadBtn.disabled = !(selectedFile && recruiter.value); }
-
-fileInput.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
-fileRemove.addEventListener('click', clearFile);
-recruiter.addEventListener('change', checkReady);
+fileInput.addEventListener('change', e => { if (e.target.files[0]) setMetaviewFile(e.target.files[0]); });
+fileRemove.addEventListener('click', clearMetaviewFile);
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setMetaviewFile(e.dataTransfer.files[0]); });
 
+// Download LinkedIn URLs
+downloadLinkedInBtn.addEventListener('click', () => {
+  const urls = metaviewCandidates.map(c => c['LinkedIn URL']).filter(u => u && u.trim());
+  if (!urls.length) { showStatus('error', '⚠️ В файле нет LinkedIn URLs'); return; }
+  const blob = new Blob([urls.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'linkedin_urls_for_snov.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+  showStatus('success', `✅ Скачано ${urls.length} LinkedIn URLs. Загрузи в Snov.io и экспортируй результат.`);
+});
+
+// Step 2: Snov CSV
 function setSnovFile(file) {
-  if (!file || !file.name.endsWith('.csv')) {
-    showStatus('error', '⚠️ Пожалуйста, выбери файл формата .csv от Snov');
-    return;
-  }
-  selectedSnovFile = file;
+  if (!file || !file.name.endsWith('.csv')) { showStatus('error', '⚠️ Выбери .csv файл от Snov'); return; }
+  snovFile = file;
   snovFileName.textContent = file.name;
   snovDropZone.style.display = 'none';
   snovFileSelected.classList.add('show');
-  updateEmailsBtn.disabled = false;
+  checkMergeReady();
 }
 
 function clearSnovFile() {
-  selectedSnovFile = null;
+  snovFile = null;
   snovFileInput.value = '';
   snovDropZone.style.display = '';
   snovFileSelected.classList.remove('show');
-  updateEmailsBtn.disabled = true;
+  checkMergeReady();
 }
 
 snovFileInput.addEventListener('change', e => { if (e.target.files[0]) setSnovFile(e.target.files[0]); });
@@ -301,60 +357,124 @@ snovDropZone.addEventListener('dragover', e => { e.preventDefault(); snovDropZon
 snovDropZone.addEventListener('dragleave', () => snovDropZone.classList.remove('drag-over'));
 snovDropZone.addEventListener('drop', e => { e.preventDefault(); snovDropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setSnovFile(e.dataTransfer.files[0]); });
 
+function checkMergeReady() {
+  mergeBtn.disabled = !(metaviewCandidates.length > 0 && snovFile);
+}
+
+// Merge and download enriched CSV
+mergeBtn.addEventListener('click', async () => {
+  if (!metaviewCandidates.length || !snovFile) return;
+
+  const snovText = await snovFile.text();
+  const { rows: snovRows } = parseCSV(snovText);
+
+  // Build email map: LinkedIn URL → email
+  const emailMap = {};
+  for (const row of snovRows) {
+    const li = normalizeLinkedIn(row['LinkedIn'] || row['LinkedIn URL'] || row['linkedin'] || '');
+    const email = row['Email'] || row['email'] || '';
+    if (li && email) emailMap[li] = email;
+  }
+
+  // Merge emails into Metaview candidates
+  let enrichedCount = 0;
+  const enriched = metaviewCandidates.map(c => {
+    const li = normalizeLinkedIn(c['LinkedIn URL'] || '');
+    const email = emailMap[li] || c['Email'] || '';
+    if (email && !c['Email']) enrichedCount++;
+    return { ...c, 'Email': email };
+  });
+
+  // Build CSV with original headers + Email updated
+  const metaviewText = await metaviewFile.text();
+  const { headers } = parseCSV(metaviewText);
+
+  const csvLines = [headers.join(',')];
+  for (const c of enriched) {
+    const values = headers.map(h => {
+      const val = c[h] || '';
+      return val.includes(',') || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
+    });
+    csvLines.push(values.join(','));
+  }
+
+  const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'enriched_candidates.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+
+  showStatus('success', `✅ Скачан обогащённый CSV. Добавлено ${enrichedCount} email(ов) из ${enriched.length} кандидатов.`);
+});
+
+// Step 3: Final CSV → Zoho
+function setFinalFile(file) {
+  if (!file || !file.name.endsWith('.csv')) { showStatus('error', '⚠️ Выбери .csv файл'); return; }
+  finalFile = file;
+  finalFileName.textContent = file.name;
+  finalDropZone.style.display = 'none';
+  finalFileSelected.classList.add('show');
+  checkUploadReady();
+}
+
+function clearFinalFile() {
+  finalFile = null;
+  finalFileInput.value = '';
+  finalDropZone.style.display = '';
+  finalFileSelected.classList.remove('show');
+  checkUploadReady();
+}
+
+function checkUploadReady() { uploadBtn.disabled = !(finalFile && recruiter.value); }
+
+finalFileInput.addEventListener('change', e => { if (e.target.files[0]) setFinalFile(e.target.files[0]); });
+finalFileRemove.addEventListener('click', clearFinalFile);
+recruiter.addEventListener('change', checkUploadReady);
+finalDropZone.addEventListener('dragover', e => { e.preventDefault(); finalDropZone.classList.add('drag-over'); });
+finalDropZone.addEventListener('dragleave', () => finalDropZone.classList.remove('drag-over'));
+finalDropZone.addEventListener('drop', e => { e.preventDefault(); finalDropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setFinalFile(e.dataTransfer.files[0]); });
+
 function showStatus(type, msg) {
   status.className = 'status show ' + type;
   status.innerHTML = type === 'loading' ? '<div class="spinner"></div><span>' + msg + '</span>' : '<span>' + msg + '</span>';
 }
 
-downloadLinkedInBtn.addEventListener('click', () => {
-  if (!parsedCandidates.length) return;
-  const urls = parsedCandidates.map(c => c['LinkedIn URL']).filter(url => url && url.trim());
-  if (!urls.length) {
-    showStatus('error', '⚠️ В файле нет LinkedIn URLs');
-    return;
-  }
-  const blob = new Blob([urls.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'linkedin_urls_for_snov.csv';
-  link.click();
-  URL.revokeObjectURL(link.href);
-  showStatus('success', `✅ Скачано ${urls.length} LinkedIn URLs. Загрузи файл в Snov.io`);
-});
-
 uploadBtn.addEventListener('click', async () => {
-  if (!selectedFile || !recruiter.value) return;
+  if (!finalFile || !recruiter.value) return;
   uploadBtn.disabled = true;
   btnText.textContent = 'Отправляем...';
   showStatus('loading', 'Отправляем кандидатов в Zoho Recruit...');
   try {
-    const text = await selectedFile.text();
-    const candidates = parseCSV(text);
+    const text = await finalFile.text();
+    const { rows } = parseCSV(text);
+    const candidates = rows.filter(r => r['First Name'] || r['Last Name'] || r['Job Title']);
+
     const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const year = now.getFullYear();
-    const lead_assigning_date = year + '-' + month + '-' + day;
+    const lead_assigning_date = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
     const lead_month = formatLeadMonth(lead_assigning_date);
+
     const payload = {
       recruiter: recruiter.value,
       source: source.value,
       uploaded_at: new Date().toISOString(),
-      file_name: selectedFile.name,
+      file_name: finalFile.name,
       lead_assigning_date,
       lead_month,
       job_opening_id: document.getElementById('jobOpening').value || null,
       candidates
     };
+
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+
     if (response.ok || response.type === 'opaque') {
       showStatus('success', `✅ Готово! ${candidates.length} кандидатов отправлено в Zoho Recruit.`);
       btnText.textContent = '↑ Отправить в Zoho';
-      clearFile();
+      clearFinalFile();
     } else {
       throw new Error('HTTP ' + response.status);
     }
@@ -362,55 +482,6 @@ uploadBtn.addEventListener('click', async () => {
     showStatus('error', err.message.includes('fetch') ? '❌ Ошибка сети. Проверь VPN.' : '❌ Ошибка: ' + err.message);
     btnText.textContent = '↑ Отправить в Zoho';
     uploadBtn.disabled = false;
-  }
-});
-
-updateEmailsBtn.addEventListener('click', async () => {
-  if (!selectedSnovFile) return;
-  updateEmailsBtn.disabled = true;
-  showStatus('loading', 'Обновляем emails в Zoho Recruit...');
-  try {
-    const text = await selectedSnovFile.text();
-    const lines = text.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-    const emailIdx = headers.findIndex(h => h.toLowerCase() === 'email');
-    const linkedInIdx = headers.findIndex(h => h.toLowerCase() === 'linkedin' || h.toLowerCase() === 'linkedin url');
-    const firstNameIdx = headers.findIndex(h => h.toLowerCase().includes('first'));
-    const lastNameIdx = headers.findIndex(h => h.toLowerCase().includes('last'));
-    if (emailIdx === -1) throw new Error('Колонка Email не найдена в файле от Snov');
-    const enriched = [];
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
-      const values = [];
-      let current = '', inQuotes = false;
-      for (let ch of lines[i]) {
-        if (ch === '"') { inQuotes = !inQuotes; }
-        else if (ch === ',' && !inQuotes) { values.push(current.trim()); current = ''; }
-        else { current += ch; }
-      }
-      values.push(current.trim());
-      const email = values[emailIdx] || '';
-      const linkedIn = linkedInIdx >= 0 ? values[linkedInIdx] || '' : '';
-      const firstName = firstNameIdx >= 0 ? values[firstNameIdx] || '' : '';
-      const lastName = lastNameIdx >= 0 ? values[lastNameIdx] || '' : '';
-      if (!email) continue;
-      enriched.push({ email, linkedIn, firstName, lastName });
-    }
-    if (!enriched.length) throw new Error('Нет кандидатов с email в файле от Snov');
-    const response = await fetch(UPDATE_EMAILS_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enriched })
-    });
-    if (response.ok || response.type === 'opaque') {
-      showStatus('success', `✅ Обновлено ${enriched.length} email(ов) в Zoho Recruit.`);
-      clearSnovFile();
-    } else {
-      throw new Error('HTTP ' + response.status);
-    }
-  } catch (err) {
-    showStatus('error', '❌ Ошибка: ' + err.message);
-    updateEmailsBtn.disabled = false;
   }
 });
 </script>
