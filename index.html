@@ -44,6 +44,13 @@ select option { background: #1a1a2e; }
 .btn { width: 100%; padding: 13px; background: var(--accent); color: #0a0a0f; border: none; border-radius: 10px; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .btn:hover:not(:disabled) { background: #a7f3d0; transform: translateY(-1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-secondary { background: transparent; color: var(--accent2); border: 1px solid rgba(129,140,248,0.4); }
+.btn-secondary:hover:not(:disabled) { background: rgba(129,140,248,0.08); color: var(--accent2); transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--muted); border: 1px solid var(--border); font-size: 13px; }
+.btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.03); color: var(--text); border-color: var(--muted); transform: translateY(-1px); }
+.divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+.section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+.hint { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; line-height: 1.6; margin-top: 0.75rem; padding: 10px 12px; background: rgba(129,140,248,0.04); border-radius: 8px; border: 1px solid rgba(129,140,248,0.12); }
 .status { margin-top: 1rem; padding: 12px 14px; border-radius: 8px; font-size: 13px; display: none; align-items: center; gap: 8px; }
 .status.show { display: flex; }
 .status.loading { background: rgba(129,140,248,0.08); border: 1px solid rgba(129,140,248,0.2); color: var(--accent2); }
@@ -105,6 +112,40 @@ select option { background: #1a1a2e; }
     <button class="btn" id="uploadBtn" disabled>
       <span id="btnText">↑ Отправить в Zoho</span>
     </button>
+
+    <hr class="divider">
+
+    <div class="section-label">📧 Обогащение emails через Snov.io</div>
+
+    <button class="btn btn-secondary" id="downloadLinkedInBtn" disabled>
+      ↓ Скачать LinkedIn URLs для Snov
+    </button>
+    <div class="hint">
+      <b style="color:var(--accent2)">Как получить emails:</b><br>
+      1. Нажми кнопку выше → скачается CSV с LinkedIn URLs<br>
+      2. Зайди в <b style="color:var(--accent2)">Snov.io → Finder → LinkedIn Search → Import from file</b><br>
+      3. Загрузи скачанный файл → дождись обработки → экспортируй результат<br>
+      4. Загрузи экспорт от Snov ниже
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <div class="drop-zone" id="snovDropZone" style="padding: 1.5rem; margin-bottom: 0;">
+        <input type="file" id="snovFileInput" accept=".csv">
+        <div class="drop-icon" style="width:36px;height:36px;font-size:16px;margin-bottom:0.5rem;">📧</div>
+        <div class="drop-title" style="font-size:13px;">Загрузи CSV от Snov</div>
+        <div class="drop-sub">с полями: Email, First name, Last name, LinkedIn</div>
+      </div>
+      <div class="file-selected" id="snovFileSelected" style="margin-top:0.75rem;margin-bottom:0;">
+        <span class="file-icon">✅</span>
+        <span class="file-name" id="snovFileName"></span>
+        <span class="file-remove" id="snovFileRemove">✕</span>
+      </div>
+    </div>
+
+    <button class="btn btn-outline" id="updateEmailsBtn" disabled>
+      ↑ Обновить emails в Zoho
+    </button>
+
     <div class="status" id="status"></div>
   </div>
   <div class="flow">
@@ -117,20 +158,13 @@ select option { background: #1a1a2e; }
 </div>
 
 <script>
-const PASSWORD = 'Aimprosoft1654!';
-const entered = prompt('Введите пароль для доступа:');
-if (entered !== PASSWORD) {
-  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#f87171;font-family:sans-serif;font-size:18px;">❌ Неверный пароль. Обратитесь к администратору.</div>';
-  throw new Error('Unauthorized');
-}
-
 const WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/aa8a0dc8-0e24-4cae-96b2-2da455ad84d6';
-const JOBS_WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/get-jobs';  
+const JOBS_WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/get-jobs';
+const UPDATE_EMAILS_WEBHOOK_URL = 'https://n8n-demo.aimprosoft.com/webhook/update-emails';
 
 const MONTH_NAMES = ['','1. January','2. February','3. March','4. April','5. May','6. June','7. July','8. August','9. September','10. October','11. November','12. December'];
 
 function formatLeadMonth(dateStr) {
-  // dateStr = "2026-05-26" → "5. May 2026"
   const parts = dateStr.split('-');
   const monthNum = parseInt(parts[1], 10);
   const year = parts[0];
@@ -143,18 +177,30 @@ const fileSelected = document.getElementById('fileSelected');
 const fileName = document.getElementById('fileName');
 const fileRemove = document.getElementById('fileRemove');
 const uploadBtn = document.getElementById('uploadBtn');
+const downloadLinkedInBtn = document.getElementById('downloadLinkedInBtn');
 const btnText = document.getElementById('btnText');
 const status = document.getElementById('status');
 const recruiter = document.getElementById('recruiter');
 const source = document.getElementById('source');
+
+const snovDropZone = document.getElementById('snovDropZone');
+const snovFileInput = document.getElementById('snovFileInput');
+const snovFileSelected = document.getElementById('snovFileSelected');
+const snovFileName = document.getElementById('snovFileName');
+const snovFileRemove = document.getElementById('snovFileRemove');
+const updateEmailsBtn = document.getElementById('updateEmailsBtn');
+
 let selectedFile = null;
+let parsedCandidates = [];
+let selectedSnovFile = null;
+
 async function loadJobOpenings() {
   const sel = document.getElementById('jobOpening');
   try {
     const r = await fetch(JOBS_WEBHOOK_URL);
     const data = await r.json();
     const raw = Array.isArray(data) ? data[0] : data;
-const jobs = raw.data || raw.jobs || (Array.isArray(data) ? data : []);
+    const jobs = raw.data || raw.jobs || (Array.isArray(data) ? data : []);
     sel.innerHTML = '<option value="">— без привязки —</option>';
     jobs.filter(j => j.Job_Opening_Status === 'In-progress').forEach(j => {
       const o = document.createElement('option');
@@ -166,7 +212,32 @@ const jobs = raw.data || raw.jobs || (Array.isArray(data) ? data : []);
     sel.innerHTML = '<option value="">— не удалось загрузить —</option>';
   }
 }
-loadJobOpenings();  
+loadJobOpenings();
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+  const candidates = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const values = [];
+    let current = '', inQuotes = false;
+    for (let ch of lines[i]) {
+      if (ch === '"') { inQuotes = !inQuotes; }
+      else if (ch === ',' && !inQuotes) { values.push(current.trim()); current = ''; }
+      else { current += ch; }
+    }
+    values.push(current.trim());
+    const firstName = values[0] || '';
+    const lastName = values[1] || '';
+    const jobTitle = values[4] || '';
+    if (!firstName.trim() && !lastName.trim() && !jobTitle.trim()) continue;
+    const candidate = {};
+    headers.forEach((h, idx) => { candidate[h] = values[idx] || ''; });
+    candidates.push(candidate);
+  }
+  return candidates;
+}
 
 function setFile(file) {
   if (!file || !file.name.endsWith('.csv')) {
@@ -177,14 +248,20 @@ function setFile(file) {
   fileName.textContent = file.name;
   dropZone.style.display = 'none';
   fileSelected.classList.add('show');
+  file.text().then(text => {
+    parsedCandidates = parseCSV(text);
+    downloadLinkedInBtn.disabled = parsedCandidates.length === 0;
+  });
   checkReady();
 }
 
 function clearFile() {
   selectedFile = null;
+  parsedCandidates = [];
   fileInput.value = '';
   dropZone.style.display = '';
   fileSelected.classList.remove('show');
+  downloadLinkedInBtn.disabled = true;
   checkReady();
   status.classList.remove('show');
 }
@@ -198,23 +275,110 @@ dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classL
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
 
+function setSnovFile(file) {
+  if (!file || !file.name.endsWith('.csv')) {
+    showStatus('error', '⚠️ Пожалуйста, выбери файл формата .csv от Snov');
+    return;
+  }
+  selectedSnovFile = file;
+  snovFileName.textContent = file.name;
+  snovDropZone.style.display = 'none';
+  snovFileSelected.classList.add('show');
+  updateEmailsBtn.disabled = false;
+}
+
+function clearSnovFile() {
+  selectedSnovFile = null;
+  snovFileInput.value = '';
+  snovDropZone.style.display = '';
+  snovFileSelected.classList.remove('show');
+  updateEmailsBtn.disabled = true;
+}
+
+snovFileInput.addEventListener('change', e => { if (e.target.files[0]) setSnovFile(e.target.files[0]); });
+snovFileRemove.addEventListener('click', clearSnovFile);
+snovDropZone.addEventListener('dragover', e => { e.preventDefault(); snovDropZone.classList.add('drag-over'); });
+snovDropZone.addEventListener('dragleave', () => snovDropZone.classList.remove('drag-over'));
+snovDropZone.addEventListener('drop', e => { e.preventDefault(); snovDropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setSnovFile(e.dataTransfer.files[0]); });
+
 function showStatus(type, msg) {
   status.className = 'status show ' + type;
   status.innerHTML = type === 'loading' ? '<div class="spinner"></div><span>' + msg + '</span>' : '<span>' + msg + '</span>';
 }
+
+downloadLinkedInBtn.addEventListener('click', () => {
+  if (!parsedCandidates.length) return;
+  const urls = parsedCandidates.map(c => c['LinkedIn URL']).filter(url => url && url.trim());
+  if (!urls.length) {
+    showStatus('error', '⚠️ В файле нет LinkedIn URLs');
+    return;
+  }
+  const blob = new Blob([urls.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'linkedin_urls_for_snov.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+  showStatus('success', `✅ Скачано ${urls.length} LinkedIn URLs. Загрузи файл в Snov.io`);
+});
 
 uploadBtn.addEventListener('click', async () => {
   if (!selectedFile || !recruiter.value) return;
   uploadBtn.disabled = true;
   btnText.textContent = 'Отправляем...';
   showStatus('loading', 'Отправляем кандидатов в Zoho Recruit...');
-
   try {
     const text = await selectedFile.text();
+    const candidates = parseCSV(text);
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const year = now.getFullYear();
+    const lead_assigning_date = year + '-' + month + '-' + day;
+    const lead_month = formatLeadMonth(lead_assigning_date);
+    const payload = {
+      recruiter: recruiter.value,
+      source: source.value,
+      uploaded_at: new Date().toISOString(),
+      file_name: selectedFile.name,
+      lead_assigning_date,
+      lead_month,
+      job_opening_id: document.getElementById('jobOpening').value || null,
+      candidates
+    };
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (response.ok || response.type === 'opaque') {
+      showStatus('success', `✅ Готово! ${candidates.length} кандидатов отправлено в Zoho Recruit.`);
+      btnText.textContent = '↑ Отправить в Zoho';
+      clearFile();
+    } else {
+      throw new Error('HTTP ' + response.status);
+    }
+  } catch (err) {
+    showStatus('error', err.message.includes('fetch') ? '❌ Ошибка сети. Проверь VPN.' : '❌ Ошибка: ' + err.message);
+    btnText.textContent = '↑ Отправить в Zoho';
+    uploadBtn.disabled = false;
+  }
+});
+
+updateEmailsBtn.addEventListener('click', async () => {
+  if (!selectedSnovFile) return;
+  updateEmailsBtn.disabled = true;
+  showStatus('loading', 'Обновляем emails в Zoho Recruit...');
+  try {
+    const text = await selectedSnovFile.text();
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-    const candidates = [];
-
+    const emailIdx = headers.findIndex(h => h.toLowerCase() === 'email');
+    const linkedInIdx = headers.findIndex(h => h.toLowerCase() === 'linkedin' || h.toLowerCase() === 'linkedin url');
+    const firstNameIdx = headers.findIndex(h => h.toLowerCase().includes('first'));
+    const lastNameIdx = headers.findIndex(h => h.toLowerCase().includes('last'));
+    if (emailIdx === -1) throw new Error('Колонка Email не найдена в файле от Snov');
+    const enriched = [];
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
       const values = [];
@@ -225,54 +389,28 @@ uploadBtn.addEventListener('click', async () => {
         else { current += ch; }
       }
       values.push(current.trim());
-      const firstName = values[0] || '';
-      const lastName = values[1] || '';
-      const jobTitle = values[4] || '';
-      if (!firstName.trim() && !lastName.trim() && !jobTitle.trim()) continue;
-      const candidate = {};
-      headers.forEach((h, idx) => { candidate[h] = values[idx] || ''; });
-      candidates.push(candidate);
+      const email = values[emailIdx] || '';
+      const linkedIn = linkedInIdx >= 0 ? values[linkedInIdx] || '' : '';
+      const firstName = firstNameIdx >= 0 ? values[firstNameIdx] || '' : '';
+      const lastName = lastNameIdx >= 0 ? values[lastNameIdx] || '' : '';
+      if (!email) continue;
+      enriched.push({ email, linkedIn, firstName, lastName });
     }
-
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const year = now.getFullYear();
-    const lead_assigning_date = year + '-' + month + '-' + day;
-    const lead_month = formatLeadMonth(lead_assigning_date); // "5. May 2026"
-
-    const payload = {
-      recruiter: recruiter.value,
-      source: source.value,
-      uploaded_at: new Date().toISOString(),
-      file_name: selectedFile.name,
-      lead_assigning_date: lead_assigning_date,
-      lead_month: lead_month,
-      job_opening_id: document.getElementById('jobOpening').value || null,
-      candidates: candidates
-    };
-
-    const response = await fetch(WEBHOOK_URL, {
+    if (!enriched.length) throw new Error('Нет кандидатов с email в файле от Snov');
+    const response = await fetch(UPDATE_EMAILS_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ enriched })
     });
-
     if (response.ok || response.type === 'opaque') {
-      showStatus('success', `✅ Готово! ${candidates.length} кандидатов отправлено в Zoho Recruit.`);
-      btnText.textContent = '↑ Отправить в Zoho';
-      clearFile();
+      showStatus('success', `✅ Обновлено ${enriched.length} email(ов) в Zoho Recruit.`);
+      clearSnovFile();
     } else {
       throw new Error('HTTP ' + response.status);
     }
   } catch (err) {
-    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-      showStatus('error', '❌ CORS ошибка: n8n не разрешает запросы с браузера. Обратитесь к администратору n8n.');
-    } else {
-      showStatus('error', '❌ Ошибка: ' + err.message);
-    }
-    btnText.textContent = '↑ Отправить в Zoho';
-    uploadBtn.disabled = false;
+    showStatus('error', '❌ Ошибка: ' + err.message);
+    updateEmailsBtn.disabled = false;
   }
 });
 </script>
